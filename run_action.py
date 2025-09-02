@@ -35,7 +35,6 @@ def run_automation():
     try:
         # --- 1. Kết nối Google Sheets ---
         print("1. Đang kết nối tới Google Sheets...")
-        # ... (Phần này giữ nguyên) ...
         gcp_credentials_json = os.environ.get('GCP_SA_KEY')
         sheet_id = os.environ.get('SHEET_ID')
         if not gcp_credentials_json or not sheet_id:
@@ -84,7 +83,6 @@ def run_automation():
 
         # --- 3. Đăng nhập WorldQuant ---
         print("\n3. Đang đăng nhập WorldQuant...")
-        # ... (Phần này giữ nguyên) ...
         wq_username = os.environ.get('WQ_USERNAME')
         wq_password = os.environ.get('WQ_PASSWORD')
         if not wq_username or not wq_password:
@@ -95,13 +93,24 @@ def run_automation():
         
         wq_instance = WorldQuant()
         print("   -> Đăng nhập WorldQuant thành công.")
+        
+        # --- Kiểm tra và ghi Header cho sheet Results một lần duy nhất ---
+        header_row = []
+        try: header_row = results_sheet.row_values(1)
+        except gspread.exceptions.APIError: pass 
+        if not header_row:
+            print("\n   -> Tab 'Results' trống, đang ghi Headers...")
+            results_sheet.append_row(HEADERS + ["Simulated At"])
 
-        # --- 4. Chạy Simulation THEO LÔ ---
+        # --- 4. Chạy Simulation và Ghi kết quả liên tục ---
         print(f"\n4. Bắt đầu Simulate {total_alphas} alpha theo từng lô {BATCH_SIZE} alpha...")
-        results_data = []
+        
         for i in range(0, total_alphas, BATCH_SIZE):
             batch = all_generated_alphas[i:i + BATCH_SIZE]
             print(f"   -> [{i + 1}-{min(i + BATCH_SIZE, total_alphas)}/{total_alphas}] Đang gửi lô: {batch}")
+            
+            # Tạo list kết quả riêng cho mỗi lô
+            batch_results = []
             
             try:
                 performance_batch_list = wq_instance.simulate(batch)
@@ -114,37 +123,34 @@ def run_automation():
                 for p in performance_batch_list:
                     if p and len(p) >= len(HEADERS):
                         result_row = p[:len(HEADERS)] + [time.strftime("%Y-%m-%d %H:%M:%S")]
-                        results_data.append(result_row)
+                        batch_results.append(result_row)
                     else:
-                        results_data.append([p[0] if p else 'Unknown'] + ['INVALID_FORMAT'] * (len(HEADERS) - 1) + [time.strftime("%Y-%m-%d %H:%M:%S")])
+                        batch_results.append([p[0] if p else 'Unknown'] + ['INVALID_FORMAT'] * (len(HEADERS) - 1) + [time.strftime("%Y-%m-%d %H:%M:%S")])
 
             except Exception as e:
                 print(f"      => Lỗi khi simulate lô: {e}")
                 for alpha in batch:
                     error_row = [alpha, 'BATCH_ERROR', str(e)] + [''] * (len(HEADERS) - 3) + ['', '', time.strftime("%Y-%m-%d %H:%M:%S")]
-                    results_data.append(error_row)
+                    batch_results.append(error_row)
             
+            # GHI KẾT QUẢ CỦA LÔ NÀY VÀO SHEET NGAY LẬP TỨC
+            if batch_results:
+                print(f"      => Đang ghi {len(batch_results)} kết quả của lô này vào Sheet...")
+                results_sheet.append_rows(batch_results, value_input_option='USER_ENTERED')
+                print(f"      => Ghi thành công.")
+
             time.sleep(SLEEP_TIME)
 
-        # --- 5 & 6. Ghi kết quả và Xóa Alphas GỐC---
-        print("\n5. Đang ghi kết quả vào Google Sheet...")
-        if results_data:
-            header_row = []
-            try: header_row = results_sheet.row_values(1)
-            except gspread.exceptions.APIError: pass 
-            if not header_row:
-                results_sheet.append_row(HEADERS + ["Simulated At"])
-            
-            results_sheet.append_rows(results_data, value_input_option='USER_ENTERED')
-            print(f"   -> Ghi {len(results_data)} kết quả thành công.")
-
-        print("\n6. Đang xóa các alpha GỐC đã xử lý...")
+        # --- 5. Xóa Alphas GỐC ---
+        print("\n5. Đang xóa các alpha GỐC đã xử lý...")
         alphas_sheet.delete_rows(2, len(records) + 1)
         print("   -> Đã xóa alpha.")
 
     except Exception as e:
         print(f"\n!!! LỖI NGHIÊM TRỌNG TRONG WORKFLOW: {e}")
-        # ... (Phần này giữ nguyên) ...
+        if results_sheet:
+            try: results_sheet.append_row(['WORKFLOW_ERROR', str(e)] + [''] * (len(HEADERS) - 1) + [time.strftime("%Y-%m-%d %H:%M:%S")])
+            except Exception as sheet_error: print(f"Không thể ghi lỗi vào Google Sheet: {sheet_error}")
         sys.exit(1)
 
     print("\nQuy trình tự động hóa hoàn tất thành công.")
