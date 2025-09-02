@@ -49,6 +49,13 @@ def run_automation():
         if not wq_username or not wq_password:
             raise ValueError("Lỗi: Biến môi trường WQ_USERNAME hoặc WQ_PASSWORD chưa được thiết lập trên GitHub Secrets.")
 
+        # Tạo một dictionary chứa thông tin đăng nhập
+        credentials = {"username": wq_username, "password": wq_password}
+        # Ghi dictionary này ra file credential.json
+        with open("credential.json", "w") as f:
+            json.dump(credentials, f)
+        print("Đã tạo file credential.json tạm thời.")
+
         # Khởi tạo WorldQuant và đăng nhập
         # BẠN CẦN ĐẢM BẢO CLASS WORLDQUANT CÓ HÀM LOGIN NHƯ DƯỚI ĐÂY
         wq_instance = WorldQuant()
