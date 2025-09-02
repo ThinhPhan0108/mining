@@ -10,7 +10,7 @@ typing-extensions>=4.9.0
 lark==1.2.2 
 scikit-learn
 PyPDF2
-pickle
+
 
 gspread
 google-auth-oauthlib
