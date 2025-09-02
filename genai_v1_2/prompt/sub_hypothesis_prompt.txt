@@ -1,0 +1,22 @@
+From Group Hypothesis and it's definition, produce seven specific, implementable alpha hypotheses (sub‑hypotheses). Each sub‑hypothesis must include:
+ - A unique, concise name (e.g., “5‑Day Price Reversion”)
+ - A one‑sentence description of the predictive rule
+ - A simple mathematical expression or pseudo‑code snippet showing how to compute the signal (use price, volume, P/E, sentiment, correlation, etc.)
+
+Ensure that:
+ - All seven sub-hypotheses are novel and do not reuse names, descriptions, or logic from previously response results.
+ - Each idea is clearly actionable for implementation in quant trading.
+ - Avoid using if-else statements in the expressions or pseudo-code. Use vectorized logic, arithmetic, or functional constructs instead.
+ 
+Output the result as a JSON array of objects, each with:
+{[
+{
+  "Group_Hypothesis": "<{{ $json.Group_Hypothesis }}>",
+   "Sub_Hypothesis": "<Sub‑hypothesis Name>",
+   "Description": "<One‑sentence predictive rule>",
+    "Expression": "<Math formula or pseudo‑code>"
+    },
+    // … two more …
+  ]
+}
+Note: Only return the JSON, and don't mention the format name

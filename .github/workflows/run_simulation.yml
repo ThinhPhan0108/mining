@@ -1,0 +1,51 @@
+name: Run Alpha Simulation
+
+on:
+  schedule:
+    - cron: '*/5 * * * *' # Chạy mỗi 5 phút
+  
+  workflow_dispatch:
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # ================== BƯỚC MỚI: CACHING ==================
+      - name: Cache pip packages
+        id: cache-pip # Đặt ID cho bước này
+        uses: actions/cache@v4
+        with:
+          # Lưu cache vào thư mục mặc định của pip
+          path: ~/.cache/pip
+          # "Chìa khóa" để nhận diện cache. Nó sẽ thay đổi nếu file requirements.txt thay đổi.
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          # Dùng lại cache cũ nếu không tìm thấy key chính xác
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      # ========================================================
+
+      - name: Install System Dependencies for Tkinter
+        run: sudo apt-get update && sudo apt-get install -y python3-tk
+
+      - name: Install Python Dependencies
+        # Chỉ chạy pip install nếu không tìm thấy cache (tiết kiệm thời gian)
+        if: steps.cache-pip.outputs.cache-hit != 'true'
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run Automation Script
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+          WQ_USERNAME: ${{ secrets.WQ_USERNAME }}
+          WQ_PASSWORD: ${{ secrets.WQ_PASSWORD }}
+        run: python run_action.py
