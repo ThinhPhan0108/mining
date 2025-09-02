@@ -243,6 +243,11 @@ class WorldQuant:
                 #gửi alpha lên worlquant để tiến hành simulation
                 simulation_response = self.sess.post('https://api.worldquantbrain.com/simulations', 
                                                      json=sim_data)
+                print(f"   -> Gửi yêu cầu simulate cho alpha '{sim_data['regular']}'.")
+                print(f"   -> API Response Status Code: {simulation_response.status_code}")
+                if simulation_response.status_code != 201:
+                    print(f"   -> API Response Body: {simulation_response.text}")
+                
                 if simulation_response.status_code == 401:
                     print("Session expired, re-authenticating...")
                     self.setup_auth(self.credentials_path)
