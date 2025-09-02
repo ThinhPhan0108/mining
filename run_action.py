@@ -13,9 +13,17 @@ def run_automation():
     print("Bắt đầu quy trình tự động hóa...")
     results_sheet = None
 
+    # Dựa theo logic trong GUI, BATCH_SIZE = 3
+    BATCH_SIZE = 3
+    SLEEP_TIME = 1  # Giảm thời gian chờ giữa các lô
+
+    # Danh sách các cột header cho Google Sheet
+    # BẠN HÃY KIỂM TRA LẠI THỨ TỰ NÀY LẦN CUỐI CHO ĐÚNG VỚI HÀM locate_alpha
     HEADERS = [
-        'alpha', 'sharpe', 'returns', 'turnover', 'fitness', 'drawdown', 
-        'margin', 'longCount', 'shortCount', 'score', 'code'
+        'alpha', 'sharpe', 'turnover', 'fitness', 'returns', 'drawdown', 
+        'margin', 'longCount', 'shortCount', 'weight', 'sub_universe', 
+        'universe', 'delay', 'decay', 'neutralization', 'truncation', 
+        'score', 'code'
     ]
 
     try:
@@ -36,61 +44,42 @@ def run_automation():
         results_sheet = spreadsheet.worksheet("Results")
         print("Kết nối Google Sheets thành công.")
 
-        # =================== THAY ĐỔI 1: ĐỌC CẢ 2 CỘT A VÀ B ===================
-        # Lấy tất cả dữ liệu từ sheet, bỏ qua hàng tiêu đề
+        # --- 2. Đọc và Tạo Alphas ---
         records = alphas_sheet.get_all_records()
         if not records:
             print("Không có alpha nào trong tab 'Alphas' để xử lý. Kết thúc.")
             return
         
         print(f"Tìm thấy {len(records)} alpha GỐC cần xử lý.")
-        # =======================================================================
-
-        # --- TÍNH NĂNG MỚI: GENERATE ALPHAS VỚI TÙY CHỌN RIÊNG ---
-        print("\nBắt đầu tạo các biến thể alpha...")
         optimizer = Optimize()
         all_generated_alphas = []
 
         for record in records:
             base_alpha = record.get('Alpha')
-            options_str = record.get('Options', '') # Lấy options, mặc định là chuỗi rỗng
-            
-            if not base_alpha or not base_alpha.strip():
-                continue
+            options_str = record.get('Options', '')
+            if not base_alpha: continue
 
-            # =================== THAY ĐỔI 2: XỬ LÝ OPTIONS ===================
-            # Chuyển chuỗi options thành một list. Ví dụ: "Fields, Operator" -> ["fields", "operator"]
-            # Nếu không có options, mặc định dùng tất cả.
-            if options_str and options_str.strip():
-                option_items = [opt.strip().lower() for opt in options_str.split(',')]
-            else:
-                # Mặc định dùng tất cả nếu cột Options để trống
-                option_items = ["fields", "operator", "daily&group", "setting"]
-            # =================================================================
+            option_items = [opt.strip().lower() for opt in options_str.split(',')] if options_str else ["fields", "operator", "daily&group", "setting"]
             
             print(f"Đang tạo biến thể cho: '{base_alpha}' với options: {option_items}")
-            try:
-                generated_list = optimizer.complete_search(base_alpha, option_items)
-                all_generated_alphas.extend(generated_list)
-                print(f"-> Tạo thành công {len(generated_list)} biến thể.")
-            except Exception as e:
-                print(f"-> Lỗi khi tạo biến thể cho '{base_alpha}': {e}")
+            generated_list = optimizer.complete_search(base_alpha, option_items)
+            all_generated_alphas.extend(generated_list)
+            print(f"-> Tạo thành công {len(generated_list)} biến thể.")
         
-        if not all_generated_alphas:
-            print("Không tạo được biến thể nào. Kết thúc workflow.")
+        total_alphas = len(all_generated_alphas)
+        if total_alphas == 0:
+            print("Không tạo được biến thể nào. Kết thúc.")
             alphas_sheet.delete_rows(2, len(records) + 1)
             return
-            
-        total_alphas = len(all_generated_alphas)
-        print(f"\nTổng cộng có {total_alphas} alpha sẽ được simulate.")
+
+        print(f"\nTổng cộng có {total_alphas} alpha sẽ được simulate theo từng lô {BATCH_SIZE} alpha.")
 
         # --- 3. Đăng nhập WorldQuant ---
         print("\nĐang đăng nhập WorldQuant...")
-        # ... (Phần này giữ nguyên) ...
         wq_username = os.environ.get('WQ_USERNAME')
         wq_password = os.environ.get('WQ_PASSWORD')
         if not wq_username or not wq_password:
-            raise ValueError("Lỗi: Biện môi trường WQ_USERNAME hoặc WQ_PASSWORD chưa được thiết lập.")
+            raise ValueError("Lỗi: Biến môi trường WQ_USERNAME hoặc WQ_PASSWORD chưa được thiết lập.")
         
         credentials = {"username": wq_username, "password": wq_password}
         with open("credential.json", "w") as f: json.dump(credentials, f)
@@ -98,27 +87,40 @@ def run_automation():
         wq_instance = WorldQuant()
         print("Đăng nhập WorldQuant thành công.")
 
-        # --- 4. Chạy Simulation ---
+        # --- 4. Chạy Simulation THEO LÔ ---
         results_data = []
-        for i, alpha in enumerate(all_generated_alphas):
-            print(f"[{i + 1}/{total_alphas}] Đang simulate alpha: {alpha}")
+        for i in range(0, total_alphas, BATCH_SIZE):
+            batch = all_generated_alphas[i:i + BATCH_SIZE]
+            print(f"[{i + 1}-{min(i + BATCH_SIZE, total_alphas)}/{total_alphas}] Đang simulate lô: {batch}")
+            
             try:
-                performance_list = wq_instance.simulate([alpha])
-                if not performance_list or not isinstance(performance_list, list) or not performance_list[0]:
-                    raise ValueError("Kết quả trả về không hợp lệ hoặc rỗng.")
-                p = performance_list[0]
-                result_row = [
-                    p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],
-                    p[8], p[9], p[10], time.strftime("%Y-%m-%d %H:%M:%S")
-                ]
-                results_data.append(result_row)
-            except Exception as e:
-                print(f"Lỗi khi simulate '{alpha}': {e}")
-                error_row = [alpha, 'ERROR', str(e)] + [''] * (len(HEADERS) - 3) + [time.strftime("%Y-%m-%d %H:%M:%S")]
-                results_data.append(error_row)
-            time.sleep(3)
+                # Gọi simulate cho cả lô
+                performance_batch_list = wq_instance.simulate(batch)
+                
+                if not performance_batch_list:
+                    raise ValueError("Kết quả trả về cho lô rỗng.")
+                
+                print(f"-> Simulate lô thành công, nhận được {len(performance_batch_list)} kết quả.")
 
-        # --- 5 & 6. Ghi kết quả và Xóa Alphas GỐC---
+                # Lặp qua từng kết quả trong lô trả về
+                for p in performance_batch_list:
+                    if p and len(p) >= len(HEADERS):
+                        # Cắt bớt kết quả để khớp với số lượng header
+                        result_row = p[:len(HEADERS)] + [time.strftime("%Y-%m-%d %H:%M:%S")]
+                        results_data.append(result_row)
+                    else:
+                        # Ghi nhận kết quả không hợp lệ nếu có
+                        results_data.append([p[0] if p else 'Unknown Alpha'] + ['INVALID_RESULT_FORMAT'] * (len(HEADERS) - 1) + [time.strftime("%Y-%m-%d %H:%M:%S")])
+
+            except Exception as e:
+                print(f"-> Lỗi khi simulate lô bắt đầu bằng '{batch[0]}': {e}")
+                for alpha in batch:
+                    error_row = [alpha, 'BATCH_ERROR', str(e)] + [''] * (len(HEADERS) - 3) + ['', '', time.strftime("%Y-%m-%d %H:%M:%S")]
+                    results_data.append(error_row)
+            
+            time.sleep(SLEEP_TIME)
+
+        # --- 5 & 6. Ghi kết quả và Xóa Alphas GỐC ---
         if results_data:
             print(f"\nĐang ghi {len(results_data)} kết quả vào tab 'Results'...")
             header_row = []
@@ -127,7 +129,7 @@ def run_automation():
             if not header_row:
                 results_sheet.append_row(HEADERS + ["Simulated At"])
             
-            results_sheet.append_rows(results_data)
+            results_sheet.append_rows(results_data, value_input_option='USER_ENTERED')
             print("Ghi kết quả thành công.")
 
         print("Đang xóa các alpha GỐC đã xử lý khỏi tab 'Alphas'...")
@@ -137,7 +139,7 @@ def run_automation():
     except Exception as e:
         print(f"!!! LỖI NGHIÊM TRỌNG TRONG WORKFLOW: {e}")
         if results_sheet:
-            try: results_sheet.append_row(['WORKFLOW_ERROR', str(e)] + [''] * (len(HEADERS) - 2) + [time.strftime("%Y-%m-%d %H:%M:%S")])
+            try: results_sheet.append_row(['WORKFLOW_ERROR', str(e)] + [''] * (len(HEADERS) - 1) + [time.strftime("%Y-%m-%d %H:%M:%S")])
             except Exception as sheet_error: print(f"Không thể ghi lỗi vào Google Sheet: {sheet_error}")
         sys.exit(1)
 
