@@ -1,0 +1,55 @@
+name: Run Alpha Simulation
+
+on:
+  schedule:
+    # Chạy tự động mỗi 5 phút
+    - cron: '*/5 * * * *'
+  
+  # Cho phép chạy thủ công từ tab Actions trên GitHub
+  workflow_dispatch:
+
+jobs:
+  simulate:
+    # Chạy trên một máy ảo Ubuntu mới nhất
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Lấy code từ repo về
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Cài đặt Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # 3. Cache các gói đã cài để tăng tốc
+      - name: Cache pip packages
+        id: cache-pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # 4. Cài đặt các thư viện hệ thống cho Tkinter
+      - name: Install System Dependencies for Tkinter
+        run: sudo apt-get update && sudo apt-get install -y python3-tk
+
+      # 5. Cài đặt các thư viện Python
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      # 6. Chạy script tự động hóa
+      - name: Run Automation Script
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+          WQ_USERNAME: ${{ secrets.WQ_USERNAME }}
+          WQ_PASSWORD: ${{ secrets.WQ_PASSWORD }}
+          GENAI_API_KEY: ${{ secrets.GENAI_API_KEY }}
+        run: python run_action.py

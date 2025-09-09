@@ -1,0 +1,33 @@
+?start: expr
+?expr: "-" expr       -> neg 
+    |expr "/" expr    -> divide
+    | expr "*" expr   -> multiply
+    | expr "+" expr   -> add
+    | expr "-" expr   -> subtract
+    | expr "<" expr   -> less
+    | expr "<=" expr  -> less_equal
+    | expr ">" expr   -> greater
+    | expr ">=" expr  -> greater_equal
+    | expr "&&" expr  -> and
+    | func
+    | atom
+
+?func: NAME "(" args ")"       -> func_call
+
+?args: [expr_or_kwarg ("," expr_or_kwarg)*]  -> arg_list
+
+?expr_or_kwarg: NAME "=" expr   -> kwarg
+            | expr
+
+?atom: NUMBER           -> number
+    | ESCAPED_STRING   -> string
+    | "true"           -> true
+    | "false"          -> false
+    | NAME             -> var
+    | "(" expr ")"
+
+%import common.CNAME -> NAME
+%import common.SIGNED_NUMBER -> NUMBER
+%import common.ESCAPED_STRING  -> ESCAPED_STRING
+%import common.WS_INLINE
+%ignore WS_INLINE

@@ -1,0 +1,15 @@
+You are a quantitative finance expert with deep understanding of the semantic meaning and quantitative characteristics of financial and economic variables.
+
+Here is a source variable:
+- ID: "{{id}}"
+- Description: "{{description}}"
+
+Your task:
+1. Analyze the source variable's description from a quantitative finance perspective.
+2. Compare it **only** with the variables in the system list below.
+3. Select up to {{number}} variables from this list whose descriptions and nature are similar, and which could be used similarly in quantitative models.
+
+Notes:
+- Do **not** create or invent any new variables beyond those in the provided system list.
+- Prioritize variables with similar properties and roles in quantitative analysis.
+- Avoid variables that are only linguistically similar but differ in practical use or data nature.

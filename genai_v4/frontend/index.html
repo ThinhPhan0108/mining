@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenAI v4 - WorldQuant Brain Assistant</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GenAI v4 - Trợ lý Alpha</h1>
+        </header>
+
+        <div class="settings-panel">
+            <h3>Cài đặt chung & Xác thực</h3>
+            <div class="grid-container">
+                <input type="text" id="username" placeholder="Tài khoản WorldQuant Brain">
+                <input type="password" id="password" placeholder="Mật khẩu">
+                <input type="text" id="sheet-id" placeholder="Google Sheet ID (để lưu output)">
+                <select id="sim-region">
+                    <option value="USA">Region: USA</option>
+                    <option value="EUROPE">Region: EUROPE</option>
+                    <option value="ASIA">Region: ASIA</option>
+                </select>
+                <select id="sim-universe">
+                    <option value="TOP3000">Universe: TOP3000</option>
+                    <option value="TOP1000">Universe: TOP1000</option>
+                </select>
+                <input type="number" id="sim-decay" value="4" placeholder="Decay">
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-link active" onclick="openTab(event, 'tab-ai-generator')">1. AI tạo Alpha</button>
+            <button class="tab-link" onclick="openTab(event, 'tab-exhaustive-search')">2. Vét cạn Alpha</button>
+            <button class="tab-link" onclick="openTab(event, 'tab-simulation')">3. Simulate Alphas</button>
+        </div>
+
+        <div id="tab-ai-generator" class="tab-content active">
+            <h2>Dùng AI để tạo Alpha</h2>
+            <p>Nhập ý tưởng, dán link paper, hoặc chat với AI để tạo alpha.</p>
+            <textarea id="ai-prompt" placeholder="Ví dụ: 'tạo một alpha momentum giá kết hợp với volume trong 20 ngày gần nhất'"></textarea>
+            <button id="generate-ai-btn">Tạo Alpha <span class="icon">✨</span></button>
+            <div class="result-box">
+                <h3>Alpha được tạo:</h3>
+                <pre id="ai-result"></pre>
+            </div>
+        </div>
+
+        <div id="tab-exhaustive-search" class="tab-content">
+            <h2>Vét cạn biểu thức Alpha</h2>
+            <p>Nhập alpha gốc, chọn các tùy chọn để hệ thống tạo ra các biến thể.</p>
+            <textarea id="base-alpha-input" placeholder="Ví dụ: rank(close - open) / stddev(returns, 10)"></textarea>
+            <div class="options">
+                <h4>Tùy chọn vét cạn (có thể chọn nhiều):</h4>
+                <label><input type="checkbox" id="opt-replace-fields" checked> Thay thế biến (Fields)</label>
+                <label><input type="checkbox" id="opt-replace-operators"> Thay thế toán tử (Operators)</label>
+                <label><input type="checkbox" id="opt-replace-day-group"> Thay thế Day & Group (Số)</label>
+                <label class="disabled"><input type="checkbox" id="opt-replace-settings" disabled> Thay thế Settings (Simulate)</label>
+            </div>
+            <button id="search-btn">Vét cạn <span class="icon">🔍</span></button>
+            <div class="result-box">
+                <h3>Danh sách Alpha được tạo: (<span id="alpha-count">0</span>)</h3>
+                <textarea id="search-result" readonly></textarea>
+                <button id="send-to-simulate-btn">Gửi danh sách qua tab Simulate <span class="icon">➔</span></button>
+            </div>
+        </div>
+
+        <div id="tab-simulation" class="tab-content">
+            <h2>Simulate danh sách Alpha</h2>
+            <p>Dán danh sách alpha (mỗi alpha một dòng) và chạy mô phỏng để xem hiệu quả.</p>
+            <textarea id="alpha-list-input" placeholder="alpha_1..."></textarea>
+            <button id="simulate-btn">Chạy Simulate <span class="icon">🚀</span></button>
+            <div class="result-box">
+                <h3>Kết quả Performance:</h3>
+                <div id="simulation-result-table">
+                    </div>
+            </div>
+        </div>
+
+        <div id="loading-overlay" class="hidden">
+            <div class="spinner"></div>
+            <p id="loading-text">Đang xử lý...</p>
+        </div>
+    </div>
+    <script src="js/main.js"></script>
+</body>
+</html>

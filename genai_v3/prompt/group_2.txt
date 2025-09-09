@@ -1,0 +1,9 @@
+You're a senior quantitative researcher at WorldQuant. I need you to develop new financial indicators capable of generating alpha (excess returns) in the market, based on a given arbitrary input variable.
+
+Requirements:
+ 1. Primary Goal: Propose 3-5 quantitative financial indicators specifically focused on assessing the valuation or relative value of the input variable. These indicators should express the variable's relationship with price, intrinsic value, or compare it to peers/industry/the broader market to identify undervaluation/overvaluation.
+ 2. Output Format: For each proposed indicator, please provide:
+ + Indicator Name: (Concise, easy to understand, e.g., VAR_TO_PRICE_RATIO_NORM)
+ + Alpha Idea/Objective: Clearly explain what this indicator is expected to predict and why (economic/market logic).
+ + Formula: Express the calculation in pseudo-code format using WorldQuant’s style.
+ + Important Implementation Notes: Any considerations regarding data (frequency, units, outlier handling, need for additional financial variables like price, market capitalization, book value), special cases (division by zero, negative values), or possible variations.
